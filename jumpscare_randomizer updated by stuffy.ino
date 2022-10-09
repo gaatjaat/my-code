@@ -103,7 +103,7 @@ const int oogaRelayPin = 3;
 const int carRelayPin = 4;
 const int trainRelay1Pin = 5;
 const int trainRelay2Pin = 6;
-const String  modeNames[8] = {"FUNCTION_TEST","ALIGN_OOGA_NOTIFY","ALIGN_OOGA","ALIGN_CAR_NOTIFY","ALIGN_CAR","ALIGN_TRAIN_NOTIFY","ALIGN_TRAIN","TEST","ARMED","TRIPPED","WARN","EXIT_NOTIFY"};
+const String  modeNames[] = {"FUNCTION_TEST", "ALIGN_OOGA", "ALIGN_CAR", "ALIGN_TRAIN", "TEST", "ARMED", "TRIPPED", "WARN", "EXIT_NOTIFY"};
 
 // Input Pins
 const int modePin = 4; 
@@ -127,6 +127,7 @@ class Jumpscare
     long timerMillis;     // timer for how long this event has been going
     long previousMillis;
     bool aligning = false;
+    bool isEnabled = false;
     int myMode;
     int beepMode = 0;
     bool warnReached = false;
@@ -225,6 +226,12 @@ class Jumpscare
       }
 
       return (trip  < atAverage);
+    }
+
+    bool Enabled(enabl)
+    {
+      isEnabled = enabl;
+      return isEnabled;
     }
     
     void TimerReset()
@@ -341,6 +348,7 @@ class Jumpscare
         }
       } else {
         this.ResetAll();
+        isEnabled = false;
       }
       }
 
@@ -385,9 +393,9 @@ void loop() {
   // check the randomizer to see if triggered
   if (randomizerTime + 5000 < millis()) {
     int randomNum = random(0, 3);
-    ooga.enable(randomNum == 0);
-    car.enable(randomNum == 1);
-    train.enable(randomNum == 2);
+    ooga.Enabled(randomNum == 0);
+    car.Enabled(randomNum == 1);
+    train.Enabled(randomNum == 2);
   }
     //does something when the mode changes
   switch (mode) {
@@ -426,12 +434,10 @@ void loop() {
     case 5: // Armed mode
       stats();
       if (!randomized) {
-        randomSeed(analogRead(0));
-        randNumber = random(300);
-        Serial.println(randNumber);
-        randomized = true;
+
       } else {
         if (randNumber < 100) {
+          
           
         } else if (randNumber >= 100 && randNumber < 200) {
           
