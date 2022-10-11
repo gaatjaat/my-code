@@ -98,15 +98,18 @@ long randNumber;
 bool randomized = false;
 
 // Output Pins
-const int ledPin = 13;
-const int oogaRelayPin = 3;
-const int carRelayPin = 4;
-const int trainRelay1Pin = 5;
-const int trainRelay2Pin = 6;
-const String  modeNames[] = {"FUNCTION_TEST", "ALIGN_OOGA", "ALIGN_CAR", "ALIGN_TRAIN", "TEST", "ARMED", "TRIPPED", "WARN", "EXIT_NOTIFY"};
+const int ledPin = 3;
+const int oogaLightPin = 4;
+const int carLightPin = 5;
+const int trainLightPin = 6;
+const int oogaHornPin = 7;
+const int carHornPin = 8;
+const int trainHornAPin = 9;
+const int trainHornBPin = 10;
+const char*  modeNames[] = {"FUNCTION_TEST", "ALIGN_OOGA", "ALIGN_CAR", "ALIGN_TRAIN", "TEST", "ARMED", "TRIPPED", "WARN", "EXIT_NOTIFY"};
 
 // Input Pins
-const int modePin = 4; 
+const int modePin = 2; 
 const int ambiantPin = A0;
 const int oogaTripPin = A1;
 const int carTripPin = A2;
@@ -122,7 +125,7 @@ class Jumpscare
     int lightPin;       // the light relay pin number
     int hornPinA;       // the bank A horn relay pin number
     int hornPinB;       // the bank B horn relay pin number
-    string eventName;   // the event's name
+    char* eventName;   // the event's name
     int eventId;        // event ID that provides little additional info on the event
     long timerMillis;     // timer for how long this event has been going
     long previousMillis;
@@ -140,7 +143,7 @@ class Jumpscare
     // and initializes the member variables and state
   public:
     
-    Jumpscare(string eventIs, int id, int trippin, int light, int hornA, int hornB)
+    Jumpscare(char* eventIs, int id, int trippin, int light, int hornA, int hornB)
     {
       eventName = eventIs;
       eventId = id;
