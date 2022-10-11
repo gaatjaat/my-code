@@ -1,4 +1,5 @@
 {
     "sketch": "My_Arduino_Code\\jumpscare_randomizer.ino",
-    "board": "arduino:avr:uno"
+    "board": "arduino:avr:uno",
+    "programmer": "arduino:arduinoisp"
 }

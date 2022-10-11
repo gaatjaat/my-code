@@ -95,7 +95,6 @@ const long offMillis = 2000;
 const int maxTime = 5000;     // a reasonable maximum allowable length of time to allow the tripwire to be tripped
 const int exceedTime = 10000; // If the tripwire has been tripped for over this time, it can be reasonably assumed that either the laser is misaligned, or there is an obstruction.
 long randNumber;
-bool randomized = false;
 
 // Output Pins
 const int ledPin = 3;
@@ -106,7 +105,7 @@ const int oogaHornPin = 7;
 const int carHornPin = 8;
 const int trainHornAPin = 9;
 const int trainHornBPin = 10;
-const char*  modeNames[] = {"FUNCTION_TEST", "ALIGN_OOGA", "ALIGN_CAR", "ALIGN_TRAIN", "TEST", "ARMED", "TRIPPED", "WARN", "EXIT_NOTIFY"};
+const char*  modeNames[] = {"FUNCTION_TEST", "ALIGN_OOGA", "ALIGN_CAR", "ALIGN_TRAIN", "TEST", "ARMED", "EXIT_NOTIFY"};
 
 // Input Pins
 const int modePin = 2; 
@@ -132,6 +131,7 @@ class Jumpscare
     bool aligning = false;
     bool isEnabled = false;
     int myMode;
+    int previousMyMode;
     int beepMode = 0;
     bool warnReached = false;
 
@@ -154,6 +154,7 @@ class Jumpscare
       pinMode(hornPinA, OUTPUT);
       hornPinB = hornB;
       pinMode(hornPinB, OUTPUT);
+      myMode = 0;
 
       lightState = LOW;
       hornState = LOW;
@@ -187,7 +188,6 @@ class Jumpscare
       hornState = LOW;  // Turn it off
       digitalWrite(hornPinA, hornState);  // Update the horn
       digitalWrite(hornPinB, hornState);  // Update the horn
-      randomized = false;
     }
     
     int GetLightState()
@@ -205,7 +205,6 @@ class Jumpscare
     {
       lightState = LOW;  // Turn it off
       digitalWrite(lightPin, lightState);  // Update the light
-      randomized = false;
     }
     
     bool CalibrateTrip()
@@ -334,26 +333,63 @@ class Jumpscare
         this.LightOn();
         delay(200);
         this.LightOff();
-        myMode = myMode + 1;
+        mode++;
         aligning = false;
       }
       stats();
     }
 
     void arm() {
-      if (this.CheckTrip()) {
-        previousMode = armMode;
-        mode = 9;
-        trippedWire = this.GetId();
-        if (IsWarned()) {
-          mode = 10;
+      if (isEnabled)
+      {
+        switch (myMode)
+        {
+          case 0: //armed
+            if (this.CheckTrip()) {
+              myMode = 1;
+              trippedWire = this.GetId();
+              if (IsWarned()) {
+                myMode = 3;
+                break;
+              }
+            } else {
+              this.ResetAll();
+            }
           break;
+          
+          case 1: //Trip Mode
+            stats();
+            
+            this.HornOn();
+            this.LightOn();
+            if (ooga.MaxLength()) {
+              myMode++;
+              this.ResetAll();          // *****This will break everything with armed mode, as it will cause the randomizer to go through each time it reaches this point, thus telling the system to listen for a different tripwire.
+              this.WarnReached();
+              break;
+            } 
+            myMode = 0;
+          break;
+          
+          case 2: //Warn Mode
+            stats();
+            
+              this.LightOn();
+              this.BeepHorn();
+              if (this.MaxLength()) {
+                mode = 6;
+                this.ResetAll();
+                break;
+              } 
+            myMode = 0;
+          break;
+          
+          default:
+            ResetAll();
+            mode = 0;
         }
-      } else {
-        this.ResetAll();
-        isEnabled = false;
       }
-      }
+    }
 
     void ResetAll()
     {
@@ -387,21 +423,7 @@ void setup() {
 // Simplify the logic of loop with each Jumpscare managing it's own mode state
 
 void loop() {
-  // Randomizer should be global with an enable/disable switch on each jumpscare
-  // get random number between 0 and 2
-  // if random number is 0, then ooga
-  // if random number is 1, then car
-  // if random number is 2, then train
-  // only update randomizer every 5 seconds
-  // check the randomizer to see if triggered
-  if (randomizerTime + 5000 < millis()) {
-    int randomNum = random(0, 3);
-    ooga.Enabled(randomNum == 0);
-    car.Enabled(randomNum == 1);
-    train.Enabled(randomNum == 2);
-  }
-    //does something when the mode changes
-  switch (mode) {
+   switch (mode) {
     case 0: //Hardware functionality test Mode
       stats();
       //turn on each relay in sequence, to verify functionality
@@ -412,111 +434,49 @@ void loop() {
     break;
     
     case 1: //Ooga tripwire align notify mode
-      alignJumpscare(ooga);
+      ooga.alignJumpscare();
     break;
 
     case 2: //Car tripwire align notify mode
-      alignJumpscare(car);
+      car.alignJumpscare();
     break;
 
     case 3: //Train tripwire align notify mode
-      alignJumpscare(train);
+      train.alignJumpscare();
     break;
 
     case 4: //test all jumpscares Mode
+      ooga.Enabled(true);
+      car.Enabled(true);
+      train.Enabled(true);
       ooga.Arm();
       car.Arm();
       train.Arm();
       
       if (digitalRead(modePin) == LOW) {
         mode = mode + 1;
+
       }
       stats();
     break;
 
     case 5: // Armed mode
       stats();
-      if (!randomized) {
-
-      } else {
-        if (randNumber < 100) {
-          
-          
-        } else if (randNumber >= 100 && randNumber < 200) {
-          
-        } else if (randNumber >= 200) {
-          
-        }
+      if (randomizerTime + 5000 < millis()) {
+        int randomNum = random(0, 3);
+        ooga.Enabled(randomNum == 0);
+        car.Enabled(randomNum == 1);
+        train.Enabled(randomNum == 2);
+        randomizerTime = millis(); //set the randomizer timer
       }
 
+      ooga.Arm();
+      car.Arm();
+      train.Arm();
+
     break;
-    
-    case 6: //Trip Mode
-      stats();
-      
-      if (trippedWire == 0) {
-        ooga.HornOn();
-        ooga.LightOn();
-        if (ooga.MaxLength()) {
-          mode = mode + 1;
-          ooga.ResetAll();          // *****This will break everything with armed mode, as it will cause the randomizer to go through each time it reaches this point, thus telling the system to listen for a different tripwire.
-          ooga.WarnReached();
-          break;
-        } 
-      } else if (trippedWire == 1) {
-        car.HornOn();
-        car.LightOn();
-        if (car.MaxLength()) {
-          mode = mode + 1;
-          car.ResetAll();
-          car.WarnReached();
-          break;
-        }
-      } else if (trippedWire == 2) {
-        train.HornOn();
-        train.LightOn();
-        if (train.MaxLength()) {
-          mode = mode + 1;
-          train.ResetAll();
-          train.WarnReached();
-          break;
-        } 
-      }
-      mode = previousMode;
-    break;
-    
-    case 7: //Warn Mode
-      stats();
-      
-      if (trippedWire == 0) {
-        ooga.LightOn();
-        ooga.BeepHorn();
-        if (ooga.MaxLength()) {
-          mode = mode + 1;
-          ooga.ResetAll();
-          break;
-        } 
-      } else if (trippedWire == 0) {
-        car.LightOn();
-        car.BeepHorn();
-        if (car.MaxLength()) {
-          mode = mode + 1;
-          car.ResetAll();
-          break;
-        } 
-      } else if (trippedWire == 0) {
-        train.LightOn();
-        train.BeepHorn();
-        if (train.MaxLength()) {
-          mode = mode + 1;
-          train.ResetAll();
-          break;
-        } 
-      }
-      mode = previousMode;
-    break;
-    
-    case 8: //Exit_notify Mode
+
+    case 6: //Exit_notify Mode
       stats();
       
       mode = 1;
@@ -527,7 +487,9 @@ void loop() {
       ooga.ResetAll();
       car.ResetAll();
       train.ResetAll();
+      delay(700);
     break;
+
     }
 
     
