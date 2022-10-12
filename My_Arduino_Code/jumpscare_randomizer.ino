@@ -1,29 +1,32 @@
 /*
   jumpscare_randomizer.ino
 
-  Written more specifically for board: Arduino UNO (or equivalent)
+  Caters to board: Arduino UNO (or equivalent)
 
-  Upon initial startup, the tripwires are all disarmed. The first modes iterate through 
-  the different lasers, to help lign them up. When the laser is aligned the LED lights up 
-  saying it is ready to proceed to the next mode.
+  Upon initial startup, a hardware function test is ran. The next three modes iterate through 
+  the different lasers, to help lign them up. When the laser is aligned the relevant light lights up, 
+  along with the LED on the board. After the laser has remained ligned up for five consecutive seconds, 
+  the relevant light flashes on and off twice, saying alignment on that tripwire is complete. 
+  The program then automatically proceeds to the next mode.
   Then once the button is pressed, the program advances through these modes:
     ooga_align
       Relevant horn beeps two short beeps to indicate that it is in this mode for this event's tripwire alignment.
       while in this mode, if the relevant laser is lined up (the difference in analog signal between the tripwire sensor 
-      and the ambient light sensor is greater than a specific threshold), light up the LED. 
+      and the ambient light sensor is greater than a specific threshold), the LED and the matching light turns on. 
       Then, once that tripwire has been lined up for 5 seconds straight, flash the matching light twice
-      to indicate that you can proceed to the next mode.
+      to indicate alignment on that tripwire is complete.
+      The program then automatically proceeds to the next mode.
     car_align
       Ditto ooga align
     train_align
       Ditto ooga align
     test
       Listen to all tripwires
-      When one of the tripwires is tripped, call trip, feeding it the event name it needs to execute.
+      When any one of the tripwires is tripped, run the tripped flow from within the jumpscare class, as per details below.
     armed
       See details below
     trip
-      When called from either test or armed modes, run the relevant event for the tripwire that was tripped.
+      When called from either test or armed modes, run the relevant event for the tripwire that was tripped (lights and horn).
       Have a timer to keep track of how long a tripwire is tripped, and proceed through the warn and exit_notify modes accordingly
     warn
       After a tripwire has been tripped for x time, start beeping the relevant horn at x interval.
@@ -35,49 +38,18 @@
   then the system first enters the warn mode (10s), and eventually the exit_notify mode, and finally back to the align modes.
  
   Armed mode:
-  Randomly selects one of several laser tripwires (pins 7-9) to listen to, 
+  Randomly selects one of several laser tripwires (pins A1-A3) to listen to, 
   then once it is identified that the active laser tripwire has been tripped 
   (the amount of light being collected in the photoresistor drops significantly),
   the jumpscare at the same location as that tripwire is activated. 
-  After a set time (currently 1 second), that jumpscare turns off, 
+  After a set time (currently 2 seconds), that jumpscare turns off, 
   and the program is looped back around to the start.
   
-  There is a small delay between activating the two banks of train horns
+  **Special Note: There is a small delay between activating the two banks of train horns
   to prevent the motor startup amperage draw from overloading the transformer.
   
   The circuit:
-  - LED attached from pin 13 to ground
-  - pushbutton attached to pin 2 from +5V
-  - 10K resistor attached to pin 2 from ground
-
-
-
-***** personal notes --- To be removed or update comments above later
-Mode flow:
-
-**Always keep track of the previous mode. Don't update this variable while in warn mode,
-except in the case complete obstruction/misalignment of any of the tripwires is detected, 
-whereupon mode will reset to 0.
-Keep track of how long the program has been in current mode 
-(to use with alignments, tripped and warn test cases).
-Record the time when any of the laser tripwires get tripped
-
-The case is selected based on what value mode (global variable) is set to
-Mode is iteratively incremented up to armed case via press of the button. 
-When in align cases, button will only increment mode if the relevant tripwire sensor has 
-observed the laser for the required consecutive timeframe.
-In test and armed cases, mode will update to tripped any time the tripwire sensor 
-detects an interruption to the tripwire signal
-The tripped case will update mode to previous mode if the tripped length is below the 
-run_time threshold time.
-The tripped case will update mode to warn if the tripped length exceeds the run_time 
-threshold time.
-The warn case will update mode to previous mode if the tripped length is below the 
-obstruction threshold time.
-The warn case will reset mode to 0 if the tripped length exceeds the 
-obstruction threshold time.
-
-
+  - See schematics in attached image file.
 
   created 2022
   by gaatjaat
@@ -85,7 +57,6 @@ obstruction threshold time.
 
 // Variables
 int mode = 0;
-int previousMode;
 int ambiant;
 int trip = 1000;              // The light value I get when the laser is aligned. Initial value is intended to be plenty high above ambient light value
 const int minLight = 900;     // To identify that the laser is aligned, the tripwire sensor needs to give a light value above this value
@@ -94,7 +65,7 @@ const long onMillis = 600;
 const long offMillis = 2000;
 const int maxTime = 5000;     // a reasonable maximum allowable length of time to allow the tripwire to be tripped
 const int exceedTime = 10000; // If the tripwire has been tripped for over this time, it can be reasonably assumed that either the laser is misaligned, or there is an obstruction.
-long randNumber;
+int trippedWire;
 
 // Output Pins
 const int ledPin = 3;
@@ -131,20 +102,15 @@ class Jumpscare
     bool aligning = false;
     bool isEnabled = false;
     int myMode;
-    int previousMyMode;
     int beepMode = 0;
     bool warnReached = false;
-
-    // These maintain the current state
     int lightState;     // lightState used to set the light
     int hornState;      // hornState used to set the horn
 
+  public:
     // Constructor - creates a Jumpscare
     // and initializes the member variables and state
-  public:
-    
-    Jumpscare(char* eventIs, int id, int trippin, int light, int hornA, int hornB)
-    {
+    Jumpscare(char* eventIs, int id, int trippin, int light, int hornA, int hornB){
       eventName = eventIs;
       eventId = id;
       tripPin = trippin;
@@ -155,60 +121,56 @@ class Jumpscare
       hornPinB = hornB;
       pinMode(hornPinB, OUTPUT);
       myMode = 0;
-
       lightState = LOW;
       hornState = LOW;
     }
 
-    bool IsWarned()
-    {
+    bool IsWarned(){
       return warnReached;
     }
     
-    void WarnReached()
-    {
+    void WarnReached(){
       warnReached = true;
     }
-    
-    int GetHornState()
-    {
-      return hornState;
+
+    void ResetWarn(){
+      warnReached = false;
     }
     
-    void HornOn()
-    {
+/*    int GetHornState(){
+      return hornState;
+    }
+*/
+    
+    void HornOn(){
       hornState = HIGH;  // Turn it on
       digitalWrite(hornPinA, hornState);  // Update the horn
       delay(220); // Train horn has two banks, and there needs to be a small delay to account for startup amperage draw
       digitalWrite(hornPinB, hornState);  // Update the horn
     }
     
-    void HornOff()
-    {
+    void HornOff(){
       hornState = LOW;  // Turn it off
       digitalWrite(hornPinA, hornState);  // Update the horn
       digitalWrite(hornPinB, hornState);  // Update the horn
     }
     
-    int GetLightState()
-    {
+/*    int GetLightState(){
       return lightState;
     }
+*/
     
-    void LightOn()
-    {
+    void LightOn(){
       lightState = HIGH;  // Turn it on
       digitalWrite(lightPin, lightState);  // Update the light
     }
     
-    void LightOff()
-    {
+    void LightOff(){
       lightState = LOW;  // Turn it off
       digitalWrite(lightPin, lightState);  // Update the light
     }
     
-    bool CalibrateTrip()
-    {
+    bool CalibrateTrip(){
       ambiant = analogRead(ambiantPin);
       trip = analogRead(tripPin);
       atAverage = ambiant + ((trip - ambiant)/2);
@@ -216,8 +178,7 @@ class Jumpscare
       return (trip >= minLight);
     }
     
-    bool CheckTrip()
-    {
+    bool CheckTrip(){
       ambiant = analogRead(ambiantPin);
       trip = analogRead(tripPin);
       atAverage = ambiant + ((trip - ambiant)/2);
@@ -226,42 +187,34 @@ class Jumpscare
         Serial.print("Wire tripped:");
         Serial.print(eventName);
       }
-
       return (trip  < atAverage);
     }
 
-    bool Enabled(enabl)
-    {
+    void Enabled(bool enabl){
       isEnabled = enabl;
-      return isEnabled;
     }
     
-    void TimerReset()
-    {
+    void TimerReset(){
       timerMillis = millis();
     }
     
-    bool MaxLength()
-    {
+    bool MaxLength(){
       return ((millis() - timerMillis) >= maxTime);
     }
     
-    bool Obstructed()
-    {
+    bool Obstructed(){
       return ((millis() - timerMillis) >= exceedTime);
     }
     
-    int GetId()
-    {
+    int GetId(){
       return eventId;
     }
     
-     void BeepHorn()
-    {
+     void BeepHorn(){
       switch (beepMode) {
         case 0:  //setup for beeping. This should only run once each time the system enters this state.
           beepMode++;
-          this.HornOn();
+          this->HornOn();
           previousMillis = millis();
         break;
         
@@ -275,7 +228,7 @@ class Jumpscare
         
         case 2:
           if ((millis() - previousMillis) >= onMillis) {
-            this.HornOff();
+            this->HornOff();
             beepMode = 1;
             previousMillis = millis();
           }
@@ -283,7 +236,7 @@ class Jumpscare
         
         case 3:
           if ((millis() - previousMillis) >= offMillis) {
-            this.HornOn();
+            this->HornOn();
             beepMode = 1;
             previousMillis = millis();
           }
@@ -291,81 +244,78 @@ class Jumpscare
       }
     }
 
-    void hardwareTest(){
-      this.HornOn();
+    void HardwareTest(){
+      this->HornOn();
       delay(700);
-      this.HornOff();
+      this->HornOff();
       delay(700);
-      this.LightOn();
+      this->LightOn();
       delay(700);
-      this.LightOff();
+      this->LightOff();
       delay(700);
     }
 
-    void alignJumpscare() {
+    void AlignJumpscare() {
       if (!aligning) {
-        this.HornOn();
+        this->HornOn();
         delay(200);
-        this.HornOff();
+        this->HornOff();
         delay(200);
-        this.HornOn();
+        this->HornOn();
         delay(200);
-        this.HornOff();
+        this->HornOff();
         aligning = true;
       }
-      if (this.CalibrateTrip()) {
-        this.LightOn();
+      if (this->CalibrateTrip()) {
+        this->LightOn();
         digitalWrite(ledPin,HIGH);
         
       } else {
         digitalWrite(ledPin,LOW);
-        this.LightOff();
-        this.TimerReset();
+        this->LightOff();
+        this->TimerReset();
       }
       
-      if (this.MaxLength()){
-        this.LightOff();
+      if (this->MaxLength()){
+        this->LightOff();
         delay(200);
-        this.LightOn();
+        this->LightOn();
         delay(200);
-        this.LightOff();
+        this->LightOff();
         delay(200);
-        this.LightOn();
+        this->LightOn();
         delay(200);
-        this.LightOff();
+        this->LightOff();
         mode++;
         aligning = false;
       }
       stats();
     }
 
-    void arm() {
-      if (isEnabled)
-      {
-        switch (myMode)
-        {
+    void Arm() {
+      if (isEnabled){
+        switch (myMode){
           case 0: //armed
-            if (this.CheckTrip()) {
+            if (this->CheckTrip()) {
               myMode = 1;
-              trippedWire = this.GetId();
               if (IsWarned()) {
-                myMode = 3;
+                myMode = 2;
                 break;
               }
             } else {
-              this.ResetAll();
+              this->ResetAll();
             }
           break;
           
           case 1: //Trip Mode
+            trippedWire = this->GetId();
             stats();
-            
-            this.HornOn();
-            this.LightOn();
-            if (ooga.MaxLength()) {
+            this->HornOn();
+            this->LightOn();
+            if (this->MaxLength()) {
               myMode++;
-              this.ResetAll();          // *****This will break everything with armed mode, as it will cause the randomizer to go through each time it reaches this point, thus telling the system to listen for a different tripwire.
-              this.WarnReached();
+              this->ResetAll();
+              this->WarnReached();
               break;
             } 
             myMode = 0;
@@ -373,40 +323,36 @@ class Jumpscare
           
           case 2: //Warn Mode
             stats();
-            
-              this.LightOn();
-              this.BeepHorn();
-              if (this.MaxLength()) {
-                mode = 6;
-                this.ResetAll();
-                break;
-              } 
+            this->LightOn();
+            this->BeepHorn();
+            if (this->Obstructed()) {
+              mode = 6;
+              this->ResetAll();
+            } 
             myMode = 0;
           break;
           
           default:
             ResetAll();
             mode = 0;
+          break;
         }
       }
     }
 
-    void ResetAll()
-    {
-      this.TimerReset();
-      this.HornOff();
-      this.LightOff();
+    void ResetAll(){
+      this->TimerReset();
+      this->HornOff();
+      this->LightOff();
       previousMillis = 0;
       beepMode = 0;
-      warnReached = false;
+      this->ResetWarn();
     }
 };
 
-
-Jumpscare ooga("ooga", 0, 12, 13, 14, 15);
-Jumpscare car("car", 1, 4, 5, 6, 7);
-Jumpscare train("train", 2, 8, 9, 10, 11);
-
+Jumpscare ooga("ooga", 0, oogaTripPin, oogaLightPin, oogaHornPin, oogaHornPin);
+Jumpscare car("car", 1, carTripPin, carLightPin, carHornPin, carHornPin);
+Jumpscare train("train", 2, trainTripPin, trainLightPin, trainHornAPin, trainHornBPin);
 int randomizerTime = 0;
 
 void setup() {
@@ -416,33 +362,27 @@ void setup() {
   randomizerTime = millis(); //set the randomizer timer
 }
 
-
-
-
-// Pull out the mode into Jumpscare class
-// Simplify the logic of loop with each Jumpscare managing it's own mode state
-
 void loop() {
    switch (mode) {
     case 0: //Hardware functionality test Mode
       stats();
       //turn on each relay in sequence, to verify functionality
-      ooga.hardwareTest();
-      car.hardwareTest();
-      train.hardwareTest();
+      ooga.HardwareTest();
+      car.HardwareTest();
+      train.HardwareTest();
       mode = mode + 1;
     break;
     
     case 1: //Ooga tripwire align notify mode
-      ooga.alignJumpscare();
+      ooga.AlignJumpscare();
     break;
 
     case 2: //Car tripwire align notify mode
-      car.alignJumpscare();
+      car.AlignJumpscare();
     break;
 
     case 3: //Train tripwire align notify mode
-      train.alignJumpscare();
+      train.AlignJumpscare();
     break;
 
     case 4: //test all jumpscares Mode
@@ -452,10 +392,8 @@ void loop() {
       ooga.Arm();
       car.Arm();
       train.Arm();
-      
       if (digitalRead(modePin) == LOW) {
         mode = mode + 1;
-
       }
       stats();
     break;
@@ -469,30 +407,26 @@ void loop() {
         train.Enabled(randomNum == 2);
         randomizerTime = millis(); //set the randomizer timer
       }
-
       ooga.Arm();
       car.Arm();
       train.Arm();
-
     break;
 
     case 6: //Exit_notify Mode
       stats();
-      
       mode = 1;
       ooga.HornOn();
+      delay(300);
       car.HornOn();
+      delay(300);
       train.HornOn();
-      delay(700);
+      delay(1000);
       ooga.ResetAll();
       car.ResetAll();
       train.ResetAll();
-      delay(700);
+      delay(2000);
     break;
-
     }
-
-    
   delay(1);                       // wait for a bit
 }
 
@@ -506,5 +440,7 @@ void stats() {
   Serial.print(atAverage);
   Serial.print(" MODE:");
   Serial.print(modeNames[mode]);
+  Serial.print("Tripped wire:");
+  Serial.print(trippedWire);
   Serial.println("");
 }
