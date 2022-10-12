@@ -55,6 +55,9 @@
   by gaatjaat
 */
 
+// Includes
+#include "Arduino.h"
+
 // Variables
 int mode = 0;
 int ambiant;
@@ -76,6 +79,7 @@ const int oogaHornPin = 7;
 const int carHornPin = 8;
 const int trainHornAPin = 9;
 const int trainHornBPin = 10;
+const char* eventNames[] = {"ooga", "car", "train"};
 const char*  modeNames[] = {"FUNCTION_TEST", "ALIGN_OOGA", "ALIGN_CAR", "ALIGN_TRAIN", "TEST", "ARMED", "EXIT_NOTIFY"};
 
 // Input Pins
@@ -95,7 +99,7 @@ class Jumpscare
     int lightPin;       // the light relay pin number
     int hornPinA;       // the bank A horn relay pin number
     int hornPinB;       // the bank B horn relay pin number
-    char* eventName;   // the event's name
+    const char* eventName;   // the event's name
     int eventId;        // event ID that provides little additional info on the event
     long timerMillis;     // timer for how long this event has been going
     long previousMillis;
@@ -110,7 +114,7 @@ class Jumpscare
   public:
     // Constructor - creates a Jumpscare
     // and initializes the member variables and state
-    Jumpscare(char* eventIs, int id, int trippin, int light, int hornA, int hornB){
+    Jumpscare(const char* eventIs, int id, int trippin, int light, int hornA, int hornB){
       eventName = eventIs;
       eventId = id;
       tripPin = trippin;
@@ -174,7 +178,6 @@ class Jumpscare
       ambiant = analogRead(ambiantPin);
       trip = analogRead(tripPin);
       atAverage = ambiant + ((trip - ambiant)/2);
-      stats();
       return (trip >= minLight);
     }
     
@@ -182,7 +185,6 @@ class Jumpscare
       ambiant = analogRead(ambiantPin);
       trip = analogRead(tripPin);
       atAverage = ambiant + ((trip - ambiant)/2);
-      stats();
       if (trip  < atAverage) {
         Serial.print("Wire tripped:");
         Serial.print(eventName);
@@ -289,7 +291,6 @@ class Jumpscare
         mode++;
         aligning = false;
       }
-      stats();
     }
 
     void Arm() {
@@ -309,7 +310,6 @@ class Jumpscare
           
           case 1: //Trip Mode
             trippedWire = this->GetId();
-            stats();
             this->HornOn();
             this->LightOn();
             if (this->MaxLength()) {
@@ -322,7 +322,6 @@ class Jumpscare
           break;
           
           case 2: //Warn Mode
-            stats();
             this->LightOn();
             this->BeepHorn();
             if (this->Obstructed()) {
@@ -350,9 +349,9 @@ class Jumpscare
     }
 };
 
-Jumpscare ooga("ooga", 0, oogaTripPin, oogaLightPin, oogaHornPin, oogaHornPin);
-Jumpscare car("car", 1, carTripPin, carLightPin, carHornPin, carHornPin);
-Jumpscare train("train", 2, trainTripPin, trainLightPin, trainHornAPin, trainHornBPin);
+Jumpscare ooga(eventNames[0], 0, oogaTripPin, oogaLightPin, oogaHornPin, oogaHornPin);
+Jumpscare car(eventNames[1], 1, carTripPin, carLightPin, carHornPin, carHornPin);
+Jumpscare train(eventNames[2], 2, trainTripPin, trainLightPin, trainHornAPin, trainHornBPin);
 int randomizerTime = 0;
 
 void setup() {
@@ -374,14 +373,17 @@ void loop() {
     break;
     
     case 1: //Ooga tripwire align notify mode
+      stats();
       ooga.AlignJumpscare();
     break;
 
     case 2: //Car tripwire align notify mode
+      stats();
       car.AlignJumpscare();
     break;
 
     case 3: //Train tripwire align notify mode
+      stats();
       train.AlignJumpscare();
     break;
 
@@ -434,13 +436,18 @@ void loop() {
 void stats() {
   Serial.print("A:");
   Serial.print(ambiant);
+  Serial.println();
   Serial.print(" T:");
   Serial.print(trip);
+  Serial.println();
   Serial.print(" AT:");
   Serial.print(atAverage);
+  Serial.println();
   Serial.print(" MODE:");
   Serial.print(modeNames[mode]);
+  Serial.println();
   Serial.print("Tripped wire:");
   Serial.print(trippedWire);
+  Serial.println();
   Serial.println("");
 }
