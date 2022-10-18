@@ -34,7 +34,7 @@
       Once the warn mode has been active for x time, medium-length beep each horn in sequence, then reset back to align.
 
   For both test and armed modes: If at any time the system notices that a tripwire has been blocked or misaligned 
-  (tripwire photoresistor reading values lower than pre-identified threshold above for longer than 5 seconds),
+  (tripwire photoresistor reading values lower than pre-identified threshold above for longer than 3 seconds),
   then the system first enters the warn mode (10s), and eventually the exit_notify mode, and finally back to the align modes.
  
   Armed mode:
@@ -42,7 +42,7 @@
   then once it is identified that the active laser tripwire has been tripped 
   (the amount of light being collected in the photoresistor drops significantly),
   the jumpscare at the same location as that tripwire is activated. 
-  After a set time (currently 2 seconds), that jumpscare turns off, 
+  After a set time (currently 2 seconds), that jumpscare turns off, --not yet implemented
   and the program is looped back around to the start.
   
   **Special Note: There is a small delay between activating the two banks of train horns
@@ -66,7 +66,7 @@ const int minLight = 900;     // To identify that the laser is aligned, the trip
 int atAverage;
 const long onMillis = 600;
 const long offMillis = 2000;
-const int maxTime = 5000;     // a reasonable maximum allowable length of time to allow the tripwire to be tripped
+const int maxTime = 3000;     // a reasonable maximum allowable length of time to allow the tripwire to be tripped
 const int exceedTime = 10000; // If the tripwire has been tripped for over this time, it can be reasonably assumed that either the laser is misaligned, or there is an obstruction.
 int trippedWire;
 int relayOff = HIGH;
