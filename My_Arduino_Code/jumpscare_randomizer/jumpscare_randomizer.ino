@@ -69,16 +69,18 @@ const long offMillis = 2000;
 const int maxTime = 5000;     // a reasonable maximum allowable length of time to allow the tripwire to be tripped
 const int exceedTime = 10000; // If the tripwire has been tripped for over this time, it can be reasonably assumed that either the laser is misaligned, or there is an obstruction.
 int trippedWire;
+int relayOff = HIGH;
+int relayOn = LOW;
 
 // Output Pins
 const int ledPin = 3;
-const int oogaLightPin = 4;
-const int carLightPin = 5;
-const int trainLightPin = 6;
-const int oogaHornPin = 7;
-const int carHornPin = 8;
-const int trainHornAPin = 9;
-const int trainHornBPin = 10;
+const int oogaLightPin = 8;
+const int carLightPin = 9;
+const int trainLightPin = 10;
+const int oogaHornPin = 4;
+const int carHornPin = 5;
+const int trainHornAPin = 6;
+const int trainHornBPin = 7;
 const char* eventNames[] = {"ooga", "car", "train"};
 const char*  modeNames[] = {"FUNCTION_TEST", "ALIGN_OOGA", "ALIGN_CAR", "ALIGN_TRAIN", "TEST", "ARMED", "EXIT_NOTIFY"};
 
@@ -125,8 +127,11 @@ class Jumpscare
       hornPinB = hornB;
       pinMode(hornPinB, OUTPUT);
       myMode = 0;
-      lightState = LOW;
-      hornState = LOW;
+      lightState = relayOff;
+      hornState = relayOff;
+      digitalWrite(hornPinA, hornState);
+      digitalWrite(hornPinB, hornState);
+      digitalWrite(lightPin, lightState);
     }
 
     bool IsWarned(){
@@ -147,14 +152,14 @@ class Jumpscare
 */
     
     void HornOn(){
-      hornState = HIGH;  // Turn it on
+      hornState = relayOn;  // Turn it on
       digitalWrite(hornPinA, hornState);  // Update the horn
       delay(220); // Train horn has two banks, and there needs to be a small delay to account for startup amperage draw
       digitalWrite(hornPinB, hornState);  // Update the horn
     }
     
     void HornOff(){
-      hornState = LOW;  // Turn it off
+      hornState = relayOff;  // Turn it off
       digitalWrite(hornPinA, hornState);  // Update the horn
       digitalWrite(hornPinB, hornState);  // Update the horn
     }
@@ -165,12 +170,12 @@ class Jumpscare
 */
     
     void LightOn(){
-      lightState = HIGH;  // Turn it on
+      lightState = relayOn;  // Turn it on
       digitalWrite(lightPin, lightState);  // Update the light
     }
     
     void LightOff(){
-      lightState = LOW;  // Turn it off
+      lightState = relayOff;  // Turn it off
       digitalWrite(lightPin, lightState);  // Update the light
     }
     
@@ -221,7 +226,7 @@ class Jumpscare
         break;
         
         case1:
-          if (hornState == LOW) {
+          if (hornState == relayOff) {
             beepMode = 2;
           } else {
             beepMode = 3;
@@ -250,11 +255,11 @@ class Jumpscare
       this->HornOn();
       delay(700);
       this->HornOff();
-      delay(700);
+      delay(1000);
       this->LightOn();
       delay(700);
       this->LightOff();
-      delay(700);
+      delay(1000);
     }
 
     void AlignJumpscare() {
@@ -366,9 +371,14 @@ void loop() {
     case 0: //Hardware functionality test Mode
       stats();
       //turn on each relay in sequence, to verify functionality
+      digitalWrite(ledPin,HIGH);
+      delay(700);
+      digitalWrite(ledPin,LOW);
+      delay(1000);
       ooga.HardwareTest();
       car.HardwareTest();
       train.HardwareTest();
+      delay(1000);
       mode = mode + 1;
     break;
     
