@@ -158,10 +158,12 @@ class Jumpscare
 */
     
     void HornOn(){
-      hornState = relayOn;  // Turn it on
-      digitalWrite(hornPinA, hornState);  // Update the horn
-      delay(220); // Train horn has two banks, and there needs to be a small delay to account for startup amperage draw
-      digitalWrite(hornPinB, hornState);  // Update the horn
+      if (!hornState){
+        hornState = relayOn;  // Turn it on
+        digitalWrite(hornPinA, hornState);  // Update the horn
+        delay(220); // Train horn has two banks, and there needs to be a small delay to account for startup amperage draw
+        digitalWrite(hornPinB, hornState);  // Update the horn
+      }
     }
     
     void HornOff(){
@@ -176,8 +178,10 @@ class Jumpscare
 */
     
     void LightOn(){
-      lightState = relayOn;  // Turn it on
-      digitalWrite(lightPin, lightState);  // Update the light
+      if (!lightState) {
+        lightState = relayOn;  // Turn it on
+        digitalWrite(lightPin, lightState);  // Update the light
+      }
     }
     
     void LightOff(){
