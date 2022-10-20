@@ -109,11 +109,8 @@ class Jumpscare
     bool aligning;
     bool isEnabled;
     bool proceed;
-    int myMode;
     int myTrip;
-    int beepMode;
     bool tripped;
-    bool warnReached;
     int lightState;     // lightState used to set the light
     int hornState;      // hornState used to set the horn
 
@@ -130,11 +127,8 @@ class Jumpscare
       pinMode(hornPinA, OUTPUT);
       hornPinB = hornB;
       pinMode(hornPinB, OUTPUT);
-      myMode = 0;
-      beepMode = 0;
       aligning = false;
       isEnabled = false;
-      warnReached = false;
       lightState = relayOff;
       hornState = relayOff;
       digitalWrite(hornPinA, hornState);
@@ -142,23 +136,15 @@ class Jumpscare
       digitalWrite(lightPin, lightState);
     }
 
-    bool IsWarned(){
-      return warnReached;
-    }
-    
-    void WarnReached(){
-      warnReached = true;
-    }
-
-    void ResetWarn(){
-      warnReached = false;
-    }
-    
     int GetHornState(){
       return hornState;
     }
     
     void HornOn(){
+      Serial.print("The current hornState is: ");
+      Serial.print(eventName);
+      Serial.print(": ");
+      Serial.println(hornState);
       if (!hornState){
         hornState = relayOn;  // Turn it on
         digitalWrite(hornPinA, hornState);  // Update the horn
@@ -178,6 +164,10 @@ class Jumpscare
     }
     
     void LightOn(){
+      Serial.print("The current lightState is: ");
+      Serial.print(eventName);
+      Serial.print(": ");
+      Serial.println(lightState);
       if (!lightState) {
         lightState = relayOn;  // Turn it on
         digitalWrite(lightPin, lightState);  // Update the light
@@ -333,8 +323,6 @@ class Jumpscare
       this->HornOff();
       this->LightOff();
       previousMillis = 0;
-      beepMode = 0;
-      this->ResetWarn();
     }
 };
 
@@ -358,7 +346,7 @@ void loop() {
       //turn on each relay in sequence, to verify functionality
       digitalWrite(ledPin,HIGH);
       if (digitalRead(modePin) == LOW) {
-				Serial.println("the button has been pressed.");
+				Serial.println("The button has been pressed.");
         digitalWrite(ledPin,LOW);
         delay(1000);
         ooga.HardwareTest();
@@ -389,7 +377,7 @@ void loop() {
       car.Arm();
       train.Arm();
       if (digitalRead(modePin) == LOW) {
-				Serial.println("the button has been pressed.");
+				//Serial.println("the button has been pressed.");
 				car.HornOn();
 				delay(300);
 				car.HornOff();
