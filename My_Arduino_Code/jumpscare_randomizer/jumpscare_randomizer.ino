@@ -145,7 +145,7 @@ class Jumpscare
       Serial.print(eventName);
       Serial.print(": ");
       Serial.println(hornState);
-      if (!hornState){
+      if (hornState == relayOff){
         hornState = relayOn;  // Turn it on
         digitalWrite(hornPinA, hornState);  // Update the horn
         delay(220); // Train horn has two banks, and there needs to be a small delay to account for startup amperage draw
@@ -168,7 +168,7 @@ class Jumpscare
       Serial.print(eventName);
       Serial.print(": ");
       Serial.println(lightState);
-      if (!lightState) {
+      if (lightState == relayOff) {
         lightState = relayOn;  // Turn it on
         digitalWrite(lightPin, lightState);  // Update the light
       }
