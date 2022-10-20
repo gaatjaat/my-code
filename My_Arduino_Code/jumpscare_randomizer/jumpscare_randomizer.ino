@@ -108,9 +108,11 @@ class Jumpscare
     long previousMillis;
     bool aligning;
     bool isEnabled;
+    bool proceed;
     int myMode;
     int myTrip;
     int beepMode;
+    bool tripped;
     bool warnReached;
     int lightState;     // lightState used to set the light
     int hornState;      // hornState used to set the horn
@@ -152,10 +154,9 @@ class Jumpscare
       warnReached = false;
     }
     
-/*    int GetHornState(){
+    int GetHornState(){
       return hornState;
     }
-*/
     
     void HornOn(){
       if (!hornState){
@@ -172,10 +173,9 @@ class Jumpscare
       digitalWrite(hornPinB, hornState);  // Update the horn
     }
     
-/*    int GetLightState(){
+    int GetLightState(){
       return lightState;
     }
-*/
     
     void LightOn(){
       if (!lightState) {
@@ -225,40 +225,6 @@ class Jumpscare
     
     int GetId(){
       return eventId;
-    }
-    
-     void BeepHorn(){
-      switch (beepMode) {
-        case 0:  //setup for beeping. This should only run once each time the system enters this state.
-          beepMode++;
-          this->HornOn();
-          previousMillis = millis();
-        break;
-        
-        case 1:
-          if (hornState == relayOn) {
-            beepMode = 2;
-          } else {
-            beepMode = 3;
-          }
-        break;
-        
-        case 2:
-          if ((millis() - previousMillis) >= onMillis) {
-            this->HornOff();
-            beepMode = 1;
-            previousMillis = millis();
-          }
-        break;
-        
-        case 3:
-          if ((millis() - previousMillis) >= offMillis) {
-            this->HornOn();
-            beepMode = 1;
-            previousMillis = millis();
-          }
-        break;
-      }
     }
 
     void HardwareTest(){
@@ -310,69 +276,54 @@ class Jumpscare
       }
     }
 
-    void Arm() {
-        Serial.print("Current tripwire sampled:");
-        Serial.print(eventName);
-        Serial.println();
-        Serial.print("Current tripwire is enabled:");
-        Serial.print(isEnabled);
-        Serial.println();
-      if (isEnabled){
-        switch (myMode){
-          case 0: //armed
-            if (this->CheckTrip()) {
-              myMode = 1;
-              Serial.print("current myMode:");
-              Serial.print(myMode);
-              Serial.println();
-              if (IsWarned()) {
-                myMode = 2;
-                Serial.print("current myMode:");
-                Serial.print(myMode);
-                Serial.println();
-                break;
-              }
-            } else {
-              this->ResetAll();
+    void Arm(){
+      if (this->CheckTrip()) {
+        if (!tripped){
+          tripped = true;
+          trippedWire = this->GetId();
+          Serial.print("Jumpscare that is tripped:");
+          Serial.print(trippedWire);
+          Serial.println();
+        }
+        if (mode == 4 || (mode == 5 && isEnabled)){
+          Serial.println("This is either mode 4 or it is mode 5 AND this tripwire is enabled.");
+          proceed = true;
+        }	
+        if (GetHornState() == relayOff && proceed == true){
+          this->HornOn();
+        }
+        if (GetLightState() == relayOff && proceed == true){
+          this->LightOn();
+        }
+        if (this->MaxLength()) {
+          Serial.println("The current tripwire has been tripped for over the maxTime limit.");
+          Serial.println("You should now be hearing some beeps");
+          previousMillis = millis();
+          if (hornState == relayOn) {
+            if ((millis() - previousMillis) >= onMillis) {
+              this->HornOff();
+              previousMillis = millis();
             }
-          break;
-          
-          case 1: //Trip Mode
-            trippedWire = this->GetId();
-            this->HornOn();
-            this->LightOn();
-            if (this->MaxLength()) {
-              myMode++;
-              Serial.print("current myMode:");
-              Serial.print(myMode);
-              Serial.println();
-              this->ResetAll();
-              this->WarnReached();
-              break;
-            } 
-            myMode = 0;
-            Serial.print("current myMode:");
-            Serial.print(myMode);
-            Serial.println();
-          break;
-          
-          case 2: //Warn Mode
-            this->LightOn();
-            this->BeepHorn();
-            if (this->Obstructed()) {
-              mode = 6;
-              this->ResetAll();
-            } 
-            myMode = 0;
-            Serial.print("current myMode:");
-            Serial.print(myMode);
-            Serial.println();
-          break;
-          
-          default:
-            ResetAll();
-            mode = 0;
-          break;
+          } else {
+            if ((millis() - previousMillis) >= offMillis) {
+              this->HornOn();
+              previousMillis = millis();
+            }
+          }			
+        }
+        if (this->Obstructed()) {
+          Serial.println("The current tripwire has been tripped for over the exceedTime limit.");
+          Serial.println("You are now being returned to align the tripwires");
+          delay(1000);
+          tripped = false;
+          this->ResetAll();
+          mode = 6;
+        }
+      } else {	
+        if (tripped){
+          tripped = false;
+          Serial.println("The tripwire is no longer tripped.");
+          this->ResetAll();
         }
       }
     }
@@ -407,13 +358,14 @@ void loop() {
       //turn on each relay in sequence, to verify functionality
       digitalWrite(ledPin,HIGH);
       if (digitalRead(modePin) == LOW) {
+				Serial.println("the button has been pressed.");
         digitalWrite(ledPin,LOW);
         delay(1000);
         ooga.HardwareTest();
         car.HardwareTest();
         train.HardwareTest();
         delay(1000);
-        mode = mode + 1;
+        mode++;
       }
     break;
     
@@ -433,14 +385,16 @@ void loop() {
     break;
 
     case 4: //test all jumpscares Mode
-      ooga.Enabled(true);
-      car.Enabled(true);
-      train.Enabled(true);
       ooga.Arm();
       car.Arm();
       train.Arm();
       if (digitalRead(modePin) == LOW) {
-        mode = mode + 1;
+				Serial.println("the button has been pressed.");
+				car.HornOn();
+				delay(300);
+				car.HornOff();
+				delay(1000);
+        mode++;
       }
       stats();
     break;
