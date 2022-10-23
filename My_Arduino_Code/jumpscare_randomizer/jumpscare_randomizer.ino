@@ -141,10 +141,6 @@ class Jumpscare
     }
     
     void HornOn(){
-      Serial.print("The current hornState is: ");
-      Serial.print(eventName);
-      Serial.print(": ");
-      Serial.println(hornState);
       if (hornState == relayOff){
         hornState = relayOn;  // Turn it on
         digitalWrite(hornPinA, hornState);  // Update the horn
@@ -164,10 +160,6 @@ class Jumpscare
     }
     
     void LightOn(){
-      Serial.print("The current lightState is: ");
-      Serial.print(eventName);
-      Serial.print(": ");
-      Serial.println(lightState);
       if (lightState == relayOff) {
         lightState = relayOn;  // Turn it on
         digitalWrite(lightPin, lightState);  // Update the light
@@ -190,10 +182,6 @@ class Jumpscare
       ambiant = analogRead(ambiantPin);
       myTrip = analogRead(tripPin);
       atAverage = ambiant + ((trip - ambiant)/2);
-      if (myTrip  < atAverage) {
-        Serial.print("Wire tripped:");
-        Serial.print(eventName);
-      }
       return (myTrip < atAverage);
     }
 
@@ -270,13 +258,9 @@ class Jumpscare
       if (this->CheckTrip()) {
         if (!tripped){
           tripped = true;
-          trippedWire = this->GetId();
-          Serial.print("Jumpscare that is tripped: ");
-          Serial.print(trippedWire);
-          Serial.println();
+          this->TimerReset();
         }
         if (mode == 4 || (mode == 5 && isEnabled)){
-          Serial.println("This is either mode 4 or it is mode 5 AND this tripwire is enabled.");
           proceed = true;
         }	
         if (GetHornState() == relayOff && proceed == true){
@@ -286,8 +270,6 @@ class Jumpscare
           this->LightOn();
         }
         if (this->MaxLength()) {
-          Serial.println("The current tripwire has been tripped for over the maxTime limit.");
-          Serial.println("You should now be hearing some beeps");
           previousMillis = millis();
           if (hornState == relayOn) {
             if ((millis() - previousMillis) >= onMillis) {
@@ -302,9 +284,6 @@ class Jumpscare
           }			
         }
         if (this->Obstructed()) {
-          Serial.println("The current tripwire has been tripped for over the exceedTime limit.");
-          Serial.println("You are now being returned to align the tripwires");
-          delay(1000);
           tripped = false;
           this->ResetAll();
           mode = 6;
@@ -312,7 +291,6 @@ class Jumpscare
       } else {	
         if (tripped){
           tripped = false;
-          Serial.println("The tripwire is no longer tripped.");
           this->ResetAll();
         }
       }
@@ -333,42 +311,34 @@ Jumpscare train(eventNames[2], 2, trainTripPin, trainLightPin, trainHornAPin, tr
 void setup() {
   pinMode(ledPin, OUTPUT);
   pinMode(modePin, INPUT_PULLUP);
-  Serial.begin(9600);
-  while (!Serial); // wait for serial port to connect. Needed for native USB
-  Serial.println("start");
   randomizerTime = millis(); //set the randomizer timer
 }
 
 void loop() {
    switch (mode) {
     case 0: //Hardware functionality test Mode
-      stats();
       //turn on each relay in sequence, to verify functionality
       digitalWrite(ledPin,HIGH);
       if (digitalRead(modePin) == LOW) {
-				Serial.println("The button has been pressed.");
         digitalWrite(ledPin,LOW);
-        delay(1000);
+        delay(300);
         ooga.HardwareTest();
         car.HardwareTest();
         train.HardwareTest();
-        delay(1000);
+        delay(500);
         mode++;
       }
     break;
     
     case 1: //Ooga tripwire align notify mode
-      stats();
       ooga.AlignJumpscare();
     break;
 
     case 2: //Car tripwire align notify mode
-      stats();
       car.AlignJumpscare();
     break;
 
     case 3: //Train tripwire align notify mode
-      stats();
       train.AlignJumpscare();
     break;
 
@@ -377,24 +347,18 @@ void loop() {
       car.Arm();
       train.Arm();
       if (digitalRead(modePin) == LOW) {
-				//Serial.println("the button has been pressed.");
 				car.HornOn();
 				delay(300);
 				car.HornOff();
-				delay(1000);
+				delay(200);
         mode++;
       }
-      stats();
     break;
 
     case 5: // Armed mode
-      stats();
       if ((randomizerTime + 5000) < millis()) {
         randomSeed(analogRead(A5));
         int randomNum = random(0, 3);
-        Serial.print("Current random number:");
-        Serial.print(randomNum);
-        Serial.println();
         ooga.Enabled(randomNum == 0);
         car.Enabled(randomNum == 1);
         train.Enabled(randomNum == 2);
@@ -406,7 +370,6 @@ void loop() {
     break;
 
     case 6: //Exit_notify Mode
-      stats();
       mode = 1;
       ooga.HornOn();
       delay(700);
@@ -421,24 +384,4 @@ void loop() {
     break;
     }
   delay(1);                       // wait for a bit
-}
-
-//Writes stats to the Serial Port
-void stats() {
-  Serial.print("A:");
-  Serial.print(ambiant);
-  Serial.println();
-  Serial.print(" T:");
-  Serial.print(trip);
-  Serial.println();
-  Serial.print(" AT:");
-  Serial.print(atAverage);
-  Serial.println();
-  Serial.print(" MODE:");
-  Serial.print(modeNames[mode]);
-  Serial.println();
-  Serial.print("Tripped wire:");
-  Serial.print(trippedWire);
-  Serial.println();
-  Serial.println("");
 }
