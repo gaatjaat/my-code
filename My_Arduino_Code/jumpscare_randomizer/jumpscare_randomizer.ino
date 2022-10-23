@@ -259,7 +259,7 @@ class Jumpscare
         delay(500);
         this->LightOn();
         delay(500);
-        this->LightOff();
+        this->ResetAll();
         delay(1000);
         mode++;
         aligning = false;
@@ -271,7 +271,7 @@ class Jumpscare
         if (!tripped){
           tripped = true;
           trippedWire = this->GetId();
-          Serial.print("Jumpscare that is tripped:");
+          Serial.print("Jumpscare that is tripped: ");
           Serial.print(trippedWire);
           Serial.println();
         }
