@@ -2,5 +2,5 @@
     "sketch": "My_Arduino_Code\\jumpscare_randomizer\\jumpscare_randomizer.ino",
     "board": "arduino:avr:uno",
     "programmer": "arduino:arduinoisp",
-    "port": "COM14"
+    "port": "COM6"
 }

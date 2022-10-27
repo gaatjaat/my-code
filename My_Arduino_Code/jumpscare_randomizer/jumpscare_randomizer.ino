@@ -66,6 +66,7 @@ const int minLight = 900;     // To identify that the laser is aligned, the trip
 int atAverage;
 const long onMillis = 600;
 const long offMillis = 2000;
+const long stayOn = 1200;
 const int maxTime = 3000;     // a reasonable maximum allowable length of time to allow the tripwire to be tripped
 const int exceedTime = 10000; // If the tripwire has been tripped for over this time, it can be reasonably assumed that either the laser is misaligned, or there is an obstruction.
 unsigned long randomizerTime = 0;
@@ -259,18 +260,16 @@ class Jumpscare
         if (!tripped){
           tripped = true;
           this->TimerReset();
+          previousMillis = millis();
         }
         if (mode == 4 || (mode == 5 && isEnabled)){
           proceed = true;
-        }	
-        if (GetHornState() == relayOff && proceed == true){
+       }	
+        if (lightState == relayOff && proceed == true){
+          this->LightOn();
           this->HornOn();
         }
-        if (GetLightState() == relayOff && proceed == true){
-          this->LightOn();
-        }
         if (this->MaxLength()) {
-          previousMillis = millis();
           if (hornState == relayOn) {
             if ((millis() - previousMillis) >= onMillis) {
               this->HornOff();
@@ -290,8 +289,17 @@ class Jumpscare
         }
       } else {	
         if (tripped){
-          tripped = false;
-          this->ResetAll();
+          if ((millis() - timerMillis) >= stayOn) {
+            tripped = false;
+            this->ResetAll();
+            if (mode == 5){
+              randomSeed(analogRead(A5));
+              int randomNum = random(0, 3);
+              ooga.Enabled(randomNum == 0);
+              car.Enabled(randomNum == 1);
+              train.Enabled(randomNum == 2);
+            }
+          }
         }
       }
     }
@@ -356,14 +364,6 @@ void loop() {
     break;
 
     case 5: // Armed mode
-      if ((randomizerTime + 5000) < millis()) {
-        randomSeed(analogRead(A5));
-        int randomNum = random(0, 3);
-        ooga.Enabled(randomNum == 0);
-        car.Enabled(randomNum == 1);
-        train.Enabled(randomNum == 2);
-        randomizerTime = millis(); //set the randomizer timer
-      }
       ooga.Arm();
       car.Arm();
       train.Arm();
