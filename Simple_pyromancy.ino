@@ -5,6 +5,9 @@ a preset length of time, then let the air raid siren spin down, and then
 release a fireball.
 */
 
+// Includes:
+#include "Arduino.h"
+
 // Global constants:
 long eventInterval = 420000;
 int sirenRelay = 2;
