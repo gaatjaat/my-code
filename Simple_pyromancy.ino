@@ -6,9 +6,10 @@ release a fireball.
 */
 
 // Global constants:
-long eventInterval = 900000;
+long eventInterval = 420000;
 int sirenRelay = 2;
 int pyroRelay = 3;
+int buttonPin = 4;
 int sirenOnTime = 7500;
 int SirenWindDownTime = 4500;
 int pyroOnTime = 1200;

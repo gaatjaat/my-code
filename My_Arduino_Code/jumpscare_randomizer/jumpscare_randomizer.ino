@@ -66,10 +66,11 @@ const int minLight = 900;     // To identify that the laser is aligned, the trip
 int atAverage;
 const long onMillis = 600;
 const long offMillis = 2000;
-const long stayOn = 1200;
+const long stayOn = 500;
 const int maxTime = 3000;     // a reasonable maximum allowable length of time to allow the tripwire to be tripped
 const int exceedTime = 10000; // If the tripwire has been tripped for over this time, it can be reasonably assumed that either the laser is misaligned, or there is an obstruction.
-unsigned long randomizerTime = 0;
+bool newRandom = true;
+int randomNum;
 int trippedWire;
 int relayOff = HIGH;
 int relayOn = LOW;
@@ -265,7 +266,7 @@ class Jumpscare
         if (mode == 4 || (mode == 5 && isEnabled)){
           proceed = true;
        }	
-        if (lightState == relayOff && proceed == true){
+        if (lightState == relayOff && proceed){
           this->LightOn();
           this->HornOn();
         }
@@ -293,11 +294,9 @@ class Jumpscare
             tripped = false;
             this->ResetAll();
             if (mode == 5){
+              newRandom = true;
               randomSeed(analogRead(A5));
-              int randomNum = random(0, 3);
-              ooga.Enabled(randomNum == 0);
-              car.Enabled(randomNum == 1);
-              train.Enabled(randomNum == 2);
+              randomNum = random(0, 3);
             }
           }
         }
@@ -309,6 +308,8 @@ class Jumpscare
       this->HornOff();
       this->LightOff();
       previousMillis = 0;
+      proceed = false;
+
     }
 };
 
@@ -319,7 +320,6 @@ Jumpscare train(eventNames[2], 2, trainTripPin, trainLightPin, trainHornAPin, tr
 void setup() {
   pinMode(ledPin, OUTPUT);
   pinMode(modePin, INPUT_PULLUP);
-  randomizerTime = millis(); //set the randomizer timer
 }
 
 void loop() {
@@ -335,6 +335,7 @@ void loop() {
         train.HardwareTest();
         delay(500);
         mode++;
+        
       }
     break;
     
@@ -364,6 +365,12 @@ void loop() {
     break;
 
     case 5: // Armed mode
+      if (newRandom) {
+        ooga.Enabled(randomNum == 0);
+        car.Enabled(randomNum == 1);
+        train.Enabled(randomNum == 2);
+        newRandom = false;
+      }
       ooga.Arm();
       car.Arm();
       train.Arm();
