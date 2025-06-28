@@ -28,7 +28,9 @@ const int on = LOW;
 const int off = HIGH;
 
 // int buttonState = 0;  // variable for reading the pushbutton status
-long showTime = (millis()-eventInterval);
+long showTime = millis();
+long nextShowTime = showTime;
+
 bool cycle = 0;
 int randQuantity = 0;
 int randTime = 0;
@@ -51,11 +53,14 @@ void setup() {
 }
 
 void loop() {
-    if (millis() >= (showTime + eventInterval))
+    if (millis() >= nextShowTime) {
         pyroShow();
         showTime = millis();
-    for(int i=8 ; i<=11 ; i++)
+        nextShowTime = showTime + eventInterval;
+    }
+    for(int i=8 ; i<=11 ; i++) {
         checkPush (i);
+    }
 }
 
 void checkPush(int pinNumber){
@@ -64,8 +69,6 @@ void checkPush(int pinNumber){
     digitalWrite((pinNumber - outPin), LOW);  // turn LED OFF
   else
     digitalWrite((pinNumber - outPin), HIGH);  // turn LED ON
-    Serial.print("Button just pressed: ");
-    Serial.println(pinNumber);
 }
 
 void pyroShow() {
@@ -81,7 +84,7 @@ void pyroShow() {
 
     digitalWrite(strobeRelay, on);
     randQuantity = random(5, 20);
-    for(int a = 1; a <= randQuantity ; a++) {
+    for(int b = 1; b <= randQuantity ; b++) {
         randTime = (random(1, 45) * 25);
         digitalWrite(popperRelay, on);
         delay(popperTime);
@@ -91,7 +94,7 @@ void pyroShow() {
     }
 
     randQuantity = random(15, 40);
-    for(int b=1; b<=randQuantity ; b++) {
+    for(int c=1; c<=randQuantity ; c++) {
         randTime = (random(1, 45) * 10);
         digitalWrite(popperRelay, on);
         delay(popperTime);
@@ -101,8 +104,8 @@ void pyroShow() {
     }
 
     randQuantity = random(25, 70);
-    for(int c=1; c<=randQuantity ; c++) {
-        if (( (c/3) % 2) == 0)
+    for(int d=1; d<=randQuantity ; d++) {
+        if (( (d/3) % 2) == 0)
             if (cycle == 0)
                 cycle = 1;
             else
