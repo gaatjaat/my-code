@@ -39,7 +39,7 @@ const int strobeButton = 9;
 const int popperButton = 10;
 const int spotlightButton = 11;
 
-const int popperTime = 40;
+const int popperTime = 45;    // air cyclinder takes this length of time to fully extend and contract.
 const int sirenOnTime = 7500;
 const int SirenWindDownTime = 4500;
 const int pyroOnTime = 750;
